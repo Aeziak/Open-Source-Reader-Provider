@@ -19,10 +19,11 @@ class ProviderController extends AbstractController
 
     public function __construct(private EntityManagerInterface $em)
     {
-        $this->storageDir = dirname(__DIR__, 2) . '/storage';
+        $this->storageDir = $_ENV['STORAGE_DIR'] ?? dirname(__DIR__, 2) . '/storage';
         if (!is_dir($this->storageDir)) {
             mkdir($this->storageDir, 0775, true);
         }
+
     }
 
     #[Route('/ui/upload', name: 'ui_upload_form', methods: ['GET'])]

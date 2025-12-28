@@ -35,8 +35,8 @@ COPY . .
 RUN php bin/console cache:clear --env=prod || true \
  && php bin/console cache:warmup --env=prod || true
 
-RUN mkdir -p storage var \
- && chmod -R 775 storage var
+RUN mkdir -p /data/storage && chmod -R 775 /data/storage
+
 
 EXPOSE 8000
 CMD ["php", "-S", "0.0.0.0:8000", "-t", "public"]
