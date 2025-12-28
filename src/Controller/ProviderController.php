@@ -174,7 +174,6 @@ class ProviderController extends AbstractController
         $id = $this->uuid();
         $storedName = $id . '.epub';
 
-        $file->move($this->storageDir, $storedName);
 
         $book = (new Book($id))
             ->setTitle($title)
@@ -182,6 +181,8 @@ class ProviderController extends AbstractController
             ->setFileName($storedName)
             ->setOriginalFileName($file->getClientOriginalName())
             ->setFileSize($file->getSize());
+
+        $file->move($this->storageDir, $storedName);
 
         $this->em->persist($book);
         $this->em->flush();
