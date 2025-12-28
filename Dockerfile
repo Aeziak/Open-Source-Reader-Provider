@@ -21,10 +21,6 @@ COPY migrations/ migrations/
 COPY symfony.lock ./
 COPY .env .env
 
-# (Optionnel mais souvent utile)
-COPY templates/ templates/
-COPY translations/ translations/
-
 # 3) Installer dépendances (les auto-scripts peuvent maintenant s'exécuter)
 RUN composer install \
     --no-dev \
