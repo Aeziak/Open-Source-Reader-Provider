@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Provider • Catalog</title>
+
+  <link rel="stylesheet" href="{{ asset('assets/css/app.css') }}">
+</head>
+
+<body class="app">
+  <div class="auth-bg" aria-hidden="true"></div>
+
+  <main class="app-wrap">
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="brand-mark" aria-hidden="true">EP</div>
+        <div>
+          <div class="brand-title">Epub Providers</div>
+          <div class="brand-subtitle">Catalogue du provider</div>
+        </div>
+      </div>
+
+      <nav class="topbar-right">
+        <a class="chip" href="{{ path('upload_form') }}">Upload</a>
+        <a class="chip chip-ghost" href="{{ path('app_logout') }}">Logout</a>
+      </nav>
+    </header>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <h1 class="h1">Catalogue</h1>
+          <p class="p muted">
+            <span id="count">{{ books|length }}</span> livre(s). Recherche locale + suppression sécurisée.
+          </p>
+        </div>
+
+        <div class="catalog-actions">
+          <input id="search" class="input input-search" type="search" placeholder="Rechercher titre, auteur, fichier…">
+        </div>
+      </div>
+
+      {% if books is empty %}
+        <div class="empty">
+          <div class="empty-title">Aucun livre pour l’instant.</div>
+          <div class="muted">Commence par uploader un EPUB.</div>
+          <div style="margin-top:12px;">
+            <a class="btn btn-primary" href="{{ path('upload_form') }}">Uploader un EPUB</a>
+          </div>
+        </div>
+      {% else %}
+        <div class="table-card">
+          <div class="table-wrap">
+            <table class="table" aria-label="Liste des livres">
+              <thead>
+                <tr>
+                  <th>Titre</th>
+                  <th>Auteur</th>
+                  <th>Fichier</th>
+                  <th>Taille</th>
+                  <th>Maj</th>
+                  <th class="th-actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="rows">
+                {% for b in books %}
+                  <tr
+                    class="book-row" 
+                    data-id="{{ b.id }}"
+                    data-search="{{ (b.title ~ ' ' ~ b.author ~ ' ' ~ b.originalFileName ~ ' ' ~ b.fileName)|lower }}"
+                  >
+                    <td class="cell-main">
+                      <div class="title">{{ b.title }}</div>
+                      <div class="muted small mono" title="{{ b.id }}">ID: {{ b.id }}</div>
+                    </td>
+                    <td>{{ b.author }}</td>
+                    <td>
+                      <div class="mono">{{ b.originalFileName }}</div>
+                      <div class="muted small">Stocké: {{ b.fileName }}</div>
+                    </td>
+                    <td class="mono">{{ (b.fileSize / 1024 / 1024)|number_format(2, '.', ' ') }} MB</td>
+                    <td class="mono">{{ b.updatedAt|date('Y-m-d H:i') }}</td>
+                    <td class="td-actions">
+                      {# adapte si tu as une route download #}
+                      {#<a class="chip chip-ghost" href="{{ path('download', {id: b.id}) }}">Download</a> #}
+
+                      <button
+                        class="chip chip-danger"
+                        type="button"
+                        data-delete
+                        data-url="{{ path('book_delete', {id: b.id}) }}"
+                        data-title="{{ b.title|e('html_attr') }}"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+          <div class="table-foot">
+            <div class="muted small" id="foot-note">
+              Tip : tape pour filtrer. Delete envoie un <span class="code">POST</span> (avec CSRF).
+            </div>
+            <div class="status" id="status">—</div>
+          </div>
+        </div>
+      {% endif %}
+    </section>
+  </main>
+
+  {# CSRF token pour delete #}
+  <script>
+    const CSRF_TOKEN = {{ csrf_token('book_delete')|json_encode|raw }};
+  </script>
+
+  <script>
+    const search = document.getElementById('search');
+    const rows = document.getElementById('rows');
+    const statusEl = document.getElementById('status');
+    const countEl = document.getElementById('count');
+
+    const setStatus = (t) => statusEl && (statusEl.textContent = t);
+
+    const filterRows = () => {
+      if (!rows || !search) return;
+      const q = (search.value || '').trim().toLowerCase();
+      let visible = 0;
+
+      rows.querySelectorAll('tr[data-search]').forEach(tr => {
+        const hay = tr.getAttribute('data-search') || '';
+        const ok = !q || hay.includes(q);
+        tr.style.display = ok ? '' : 'none';
+        if (ok) visible++;
+      });
+
+      if (countEl) countEl.textContent = String(visible);
+    };
+
+    search?.addEventListener('input', filterRows);
+
+    document.addEventListener('click', async (e) => {
+      const btn = e.target.closest('[data-delete]');
+      if (!btn) return;
+
+      const url = btn.getAttribute('data-url');
+      const title = btn.getAttribute('data-title') || 'ce livre';
+
+      if (!url) return;
+
+      const yes = confirm(`Supprimer “${title}” ?\n\nCette action est irréversible.`);
+      if (!yes) return;
+
+      btn.disabled = true;
+      setStatus('Suppression...');
+
+      try {
+        const r = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': CSRF_TOKEN
+          },
+          body: JSON.stringify({})
+        });
+
+        const text = await r.text();
+        if (!r.ok) throw new Error(text || 'Erreur serveur');
+
+        // Retire la row
+        const tr = btn.closest('tr[data-id]');
+        if (tr) tr.remove();
+
+        setStatus('Supprimé ✓');
+        filterRows();
+      } catch (err) {
+        setStatus('Erreur: ' + (err?.message || String(err)));
+        btn.disabled = false;
+      }
+    });
+
+    // init
+    filterRows();
+  </script>
+</body>
+</html>

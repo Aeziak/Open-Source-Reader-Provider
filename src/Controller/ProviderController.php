@@ -26,82 +26,10 @@ class ProviderController extends AbstractController
 
     }
 
-    #[Route('/ui/upload', name: 'ui_upload_form', methods: ['GET'])]
+    #[Route('/upload', name: 'upload_form', methods: ['GET'])]
     public function uploadForm(): Response
     {
-        $html = <<<HTML
-            <!doctype html>
-            <html lang="fr">
-            <head>
-            <meta charset="utf-8" />
-            <meta name="viewport" content="width=device-width,initial-scale=1" />
-            <title>Provider — Upload EPUB</title>
-            <style>
-                body { font-family: sans-serif; margin: 20px; max-width: 720px; }
-                .box { border: 1px solid #000; padding: 14px; }
-                label { display:block; margin-top: 10px; }
-                input { width: 100%; padding: 8px; margin-top: 6px; box-sizing: border-box; }
-                button { margin-top: 14px; padding: 10px 14px; }
-                .small { font-size: 12px; opacity: .8; margin-top: 8px; }
-                pre { white-space: pre-wrap; background: #f5f5f5; padding: 10px; border: 1px solid #ddd; }
-            </style>
-            </head>
-            <body>
-            <h1>Upload EPUB</h1>
-
-            <div class="box">
-                <form id="upload-form" action="/upload" method="post" enctype="multipart/form-data">
-                <label>Fichier (.epub)
-                    <input type="file" name="file" accept=".epub,application/epub+zip" required />
-                </label>
-
-                <label>Titre
-                    <input type="text" name="title" placeholder="Mon livre" />
-                </label>
-
-                <label>Auteur
-                    <input type="text" name="author" placeholder="Auteur" />
-                </label>
-
-                <button type="submit">Uploader</button>
-                <div class="small">Envoie sur <code>POST /upload</code>. Ensuite tu peux vérifier <code>/catalog</code>.</div>
-                </form>
-            </div>
-
-            <h2>Résultat</h2>
-            <pre id="result">—</pre>
-
-            <script>
-                const form = document.getElementById('upload-form');
-                const result = document.getElementById('result');
-
-                form.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                result.textContent = "Upload...";
-                try {
-                    const fd = new FormData(form);
-                    const r = await fetch(form.action, { method: "POST", body: fd });
-                    const text = await r.text();
-                    if (!r.ok) throw new Error(text);
-                    result.textContent = text;
-
-                    // petit lien utile
-                    try {
-                    const j = JSON.parse(text);
-                    if (j.id) {
-                        result.textContent += "\\n\\nTests:\\n/catalog?page=1&pageSize=20\\n/download/" + j.id + "\\n";
-                    }
-                    } catch {}
-                } catch (err) {
-                    result.textContent = "Erreur:\\n" + (err?.message || String(err));
-                }
-                });
-            </script>
-            </body>
-            </html>
-        HTML;
-
-        return new Response($html);
+        return $this->render('upload_form.html.twig');
     }
 
     #[Route('/catalog', methods: ['GET'])]
@@ -158,7 +86,7 @@ class ProviderController extends AbstractController
         return $response;
     }
 
-    #[Route('/upload', methods: ['POST'])]
+    #[Route('/upload', name: 'upload', methods: ['POST'])]
     public function upload(Request $request): JsonResponse
     {
         /** @var UploadedFile|null $file */

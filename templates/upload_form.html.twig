@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Provider • Upload EPUB</title>
+
+  <link rel="stylesheet" href="{{ asset('assets/css/app.css') }}">
+</head>
+
+<body class="app">
+  <div class="auth-bg" aria-hidden="true"></div>
+
+  <main class="app-wrap">
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="brand-mark" aria-hidden="true">EP</div>
+        <div>
+          <div class="brand-title">Epub Providers</div>
+          <div class="brand-subtitle">Upload & indexation</div>
+        </div>
+      </div>
+
+      <nav class="topbar-right">
+        {# Adapte les routes si tu les as #}
+        <a class="chip" href="{{ path('homepage') }}">Catalog</a>
+        <a class="chip chip-ghost" href="{{ path('app_logout') }}">Logout</a>
+      </nav>
+    </header>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <h1 class="h1">Upload EPUB</h1>
+          <p class="p muted">Ajoute un fichier .epub et quelques métadonnées. On te renvoie un JSON avec l’ID.</p>
+        </div>
+        <div class="badge">POST • {{ path('upload') }}</div>
+      </div>
+
+      <div class="grid">
+        <article class="card">
+          <form id="upload-form" action="{{ path('upload') }}" method="post" enctype="multipart/form-data" class="form">
+            <div class="field">
+              <label for="file">Fichier (.epub)</label>
+
+              <div class="drop" id="dropzone">
+                <input id="file" type="file" name="file" accept=".epub,application/epub+zip" required>
+                <div class="drop-hint">
+                  <div class="drop-title">Glisse-dépose ton EPUB ici</div>
+                  <div class="drop-subtitle muted">ou clique pour choisir un fichier</div>
+                  <div class="file-pill" id="file-pill" hidden>
+                    <span id="file-name"></span>
+                    <span class="muted" id="file-size"></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="title">Titre</label>
+              <input id="title" type="text" name="title" placeholder="Mon livre">
+            </div>
+
+            <div class="field">
+              <label for="author">Auteur</label>
+              <input id="author" type="text" name="author" placeholder="Auteur">
+            </div>
+
+            <div class="row row-tight">
+              <button class="btn btn-primary" type="submit" id="submit-btn">
+                Uploader
+              </button>
+              <button class="btn btn-ghost" type="button" id="reset-btn">
+                Reset
+              </button>
+            </div>
+
+            <p class="hint">
+              Après upload : <span class="code">/catalog</span> pour vérifier l’index, puis <span class="code">/download/:id</span>.
+            </p>
+          </form>
+        </article>
+
+        <aside class="card">
+          <div class="result-head">
+            <h2 class="h2">Résultat</h2>
+            <div class="result-actions">
+              <button class="chip chip-ghost" type="button" id="copy-btn">Copier</button>
+              <button class="chip chip-ghost" type="button" id="clear-btn">Effacer</button>
+            </div>
+          </div>
+
+          <pre class="pre" id="result">—</pre>
+
+          <div class="tips">
+            <div class="tip">
+              <div class="tip-title">Bon format</div>
+              <div class="muted">Fichier <span class="code">.epub</span> (ZIP). Évite les noms bizarres.</div>
+            </div>
+            <div class="tip">
+              <div class="tip-title">Métadonnées</div>
+              <div class="muted">Si tu laisses vide, le backend peut extraire depuis l’OPF si tu le gères.</div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const form = document.getElementById('upload-form');
+    const result = document.getElementById('result');
+    const fileInput = document.getElementById('file');
+    const submitBtn = document.getElementById('submit-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    const clearBtn = document.getElementById('clear-btn');
+    const copyBtn = document.getElementById('copy-btn');
+
+    const dropzone = document.getElementById('dropzone');
+    const filePill = document.getElementById('file-pill');
+    const fileName = document.getElementById('file-name');
+    const fileSize = document.getElementById('file-size');
+
+    const fmtBytes = (n) => {
+      if (!Number.isFinite(n)) return '';
+      const units = ['B','KB','MB','GB'];
+      let i = 0, v = n;
+      while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+      return `${v.toFixed(v >= 10 || i === 0 ? 0 : 1)} ${units[i]}`;
+    };
+
+    const setFileInfo = () => {
+      const f = fileInput.files && fileInput.files[0];
+      if (!f) {
+        filePill.hidden = true;
+        fileName.textContent = '';
+        fileSize.textContent = '';
+        return;
+      }
+      filePill.hidden = false;
+      fileName.textContent = f.name;
+      fileSize.textContent = ' • ' + fmtBytes(f.size);
+    };
+
+    const setResult = (text) => {
+      result.textContent = text;
+    };
+
+    fileInput.addEventListener('change', setFileInfo);
+
+    // drag & drop UX
+    ['dragenter','dragover'].forEach(evt =>
+      dropzone.addEventListener(evt, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropzone.classList.add('is-drag');
+      })
+    );
+    ['dragleave','drop'].forEach(evt =>
+      dropzone.addEventListener(evt, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropzone.classList.remove('is-drag');
+      })
+    );
+    dropzone.addEventListener('drop', (e) => {
+      const files = e.dataTransfer && e.dataTransfer.files;
+      if (!files || !files.length) return;
+
+      // petit garde-fou: ne garder que 1 fichier
+      const dt = new DataTransfer();
+      dt.items.add(files[0]);
+      fileInput.files = dt.files;
+      setFileInfo();
+    });
+
+    resetBtn.addEventListener('click', () => {
+      form.reset();
+      setFileInfo();
+      setResult('—');
+    });
+
+    clearBtn.addEventListener('click', () => setResult('—'));
+
+    copyBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(result.textContent || '');
+        // feedback léger
+        copyBtn.textContent = 'Copié ✓';
+        setTimeout(() => (copyBtn.textContent = 'Copier'), 900);
+      } catch {
+        // fallback: rien
+      }
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Upload...';
+      setResult('Upload...');
+
+      try {
+        const fd = new FormData(form);
+        const r = await fetch(form.action, { method: "POST", body: fd });
+
+        const text = await r.text();
+        if (!r.ok) throw new Error(text);
+
+        // Affichage joli si c'est du JSON
+        let out = text;
+        try {
+          const j = JSON.parse(text);
+          out = JSON.stringify(j, null, 2);
+
+          if (j && j.id) {
+            out += `\n\nTests:\n/catalog?page=1&pageSize=20\n/download/${j.id}\n`;
+          }
+        } catch {}
+
+        setResult(out);
+      } catch (err) {
+        setResult("Erreur:\n" + (err?.message || String(err)));
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Uploader';
+      }
+    });
+
+    // init
+    setFileInfo();
+  </script>
+</body>
+</html>

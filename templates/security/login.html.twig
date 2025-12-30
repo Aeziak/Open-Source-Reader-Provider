@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Connexion • Epub Providers</title>
+
+  <link rel="stylesheet" href="{{ asset('assets/css/app.css') }}">
+</head>
+
+<body class="auth">
+  <div class="auth-bg" aria-hidden="true"></div>
+
+  <main class="auth-wrap">
+    <section class="auth-card" role="region" aria-label="Connexion">
+
+      <header class="auth-header">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">EP</div>
+          <div class="brand-text">
+            <div class="brand-title">Epub Providers</div>
+            <div class="brand-subtitle">Connexion au panneau fournisseur</div>
+          </div>
+        </div>
+      </header>
+
+      {% if error %}
+        <div class="alert alert-danger" role="alert">
+          <strong>Connexion refusée.</strong>
+          <div class="muted">{{ error.messageKey|trans(error.messageData, 'security') }}</div>
+        </div>
+      {% endif %}
+
+      <form class="auth-form" method="post" action="{{ path('app_login') }}" novalidate>
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+
+        <div class="field">
+          <label for="email">Email</label>
+          <input
+            id="email"
+            type="email"
+            name="email"
+            value="{{ last_username }}"
+            required
+            autofocus
+            autocomplete="email"
+            inputmode="email"
+            placeholder="ex: alice@provider.com"
+          >
+        </div>
+
+        <div class="field">
+          <label for="password">Mot de passe</label>
+          <div class="password">
+            <input
+              id="password"
+              type="password"
+              name="password"
+              required
+              autocomplete="current-password"
+              placeholder="••••••••••"
+            >
+            <button class="pw-toggle" type="button" data-toggle-password aria-label="Afficher/masquer le mot de passe">
+              👁
+            </button>
+          </div>
+        </div>
+
+        <div class="row">
+          <label class="checkbox">
+            <input type="checkbox" name="_remember_me">
+            <span>Rester connecté</span>
+          </label>
+
+          {# Mets une vraie route si tu en ajoutes une #}
+          <a class="link" href="#" aria-disabled="true" title="À implémenter si besoin">Mot de passe oublié</a>
+        </div>
+
+        <button class="btn btn-primary" type="submit">
+          Se connecter
+        </button>
+
+        <p class="hint">
+          Accès réservé aux fournisseurs et administrateurs.
+        </p>
+      </form>
+
+      <footer class="auth-footer">
+        <span class="muted">© {{ "now"|date("Y") }} • Reader Client</span>
+      </footer>
+    </section>
+  </main>
+
+  <script>
+    // Toggle affichage mot de passe (vanilla, optionnel)
+    (function () {
+      const btn = document.querySelector('[data-toggle-password]');
+      const input = document.getElementById('password');
+      if (!btn || !input) return;
+
+      btn.addEventListener('click', () => {
+        const isPwd = input.getAttribute('type') === 'password';
+        input.setAttribute('type', isPwd ? 'text' : 'password');
+        btn.textContent = isPwd ? '🙈' : '👁';
+      });
+    })();
+  </script>
+</body>
+</html>
